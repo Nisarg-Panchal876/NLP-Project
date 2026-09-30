@@ -1,0 +1,226 @@
+# Baseline RAG Pipeline with LangChain, ChromaDB, Hugging Face Embeddings, and Ollama
+
+This project implements a clean, modular baseline retrieval-augmented generation (RAG) pipeline for PDF documents.
+
+It is intentionally designed as a baseline for later experiments. The retrieval step exposes raw chunks, including any instructions inside them, so a future DeBERTa-based security filter can be inserted between retrieval and generation without rewriting the whole architecture.
+
+## Project purpose
+
+The system does the following:
+
+1. Reads all PDFs in the configured documents folder.
+2. Extracts text from those PDFs.
+3. Splits the text into chunks using a recursive text splitter.
+4. Generates embeddings with a Hugging Face hosted embedding model.
+5. Stores the embeddings and metadata in ChromaDB.
+6. Retrieves the top 5 chunks for a user question.
+7. Sends the retrieved context to an authenticated Ollama Cloud model.
+8. Prints the retrieved chunks, metadata, similarity information, and the final generated answer.
+
+## Architecture
+
+The code is separated into focused modules so the pipeline supports a later insertion point for a malicious-chunk filter:
+
+- `src/config.py`: centralized configuration
+- `src/ingestion.py`: PDF loading and chunking
+- `src/embeddings.py`: Hugging Face hosted embeddings
+- `src/vectorstore.py`: Chroma persistence and retrieval setup
+- `src/retriever.py`: top-k retrieval logic
+- `src/llm.py`: Ollama Cloud LLM interaction
+- `src/prompts.py`: RAG prompt assembly
+- `src/rag.py`: orchestration of retrieval + generation
+
+## Folder structure
+
+```text
+project/
+├── data/
+│   ├── pdfs/
+│   └── chroma/
+├── src/
+│   ├── config.py
+│   ├── ingestion.py
+│   ├── embeddings.py
+│   ├── vectorstore.py
+│   ├── retriever.py
+│   ├── llm.py
+│   ├── prompts.py
+│   └── rag.py
+├── ingest.py
+├── query.py
+├── smoke_test.py
+├── requirements.txt
+├── .env
+├── .env.example
+├── README.md
+└── ...
+```
+
+## Installation
+
+1. Open a terminal in the project root.
+2. Create a Python virtual environment if desired.
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Create the Hugging Face token
+
+1. Go to https://huggingface.co/settings/tokens
+2. Create a read token if you do not already have one.
+3. Store it in the `.env` file as:
+
+```env
+HUGGINGFACEHUB_API_TOKEN=your_token_here
+OLLAMA_API_KEY=your_ollama_api_key_here
+```
+
+Important: this token is used only for the hosted embedding model. Ollama Cloud uses `OLLAMA_API_KEY`.
+
+## Configure `.env`
+
+Copy the example file and edit it:
+
+```bash
+copy .env.example .env
+```
+
+Then edit `.env` with your actual values. At minimum:
+
+```env
+HUGGINGFACEHUB_API_TOKEN=your_token_here
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_TASK=feature-extraction
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_MODEL=deepseek-v4.1-flash:cloud
+CHUNK_SIZE=800
+CHUNK_OVERLAP=150
+TOP_K=5
+```
+
+> The project keeps the embedding model configurable. The current LangChain Hugging Face hosted embedding API is compatible with `feature-extraction` models such as `sentence-transformers/all-MiniLM-L6-v2`. If you override the model to `thenlper/gte-large`, the Hub may reject that combination in the current stack.
+
+## Configure Ollama Cloud
+
+Create an API key in your Ollama account and replace `your_ollama_api_key_here` in `.env` with the key. The application sends it as a Bearer token to `https://ollama.com`; do not commit `.env` or share the key.
+
+The default cloud model is `glm-5.3-flash:cloud`, chosen as a lighter cloud option for instruction-following and extraction tasks. You can change `OLLAMA_MODEL` to another cloud model available to your account.
+
+## Put PDFs in the data folder
+
+Place all of your PDF documents in:
+
+```text
+data/pdfs/
+```
+
+The loader automatically discovers every PDF in that directory.
+
+## Run ingestion
+
+To load PDFs, split them into chunks, generate embeddings, and store them in ChromaDB:
+
+```bash
+python ingest.py
+```
+
+This creates and persists the vector database locally under:
+
+```text
+data/chroma/
+```
+
+## Run queries
+
+Start the interactive query CLI:
+
+```bash
+python query.py
+```
+
+Then enter a question, for example:
+
+```text
+Enter your question: What are the attendance policies?
+```
+
+The script will display:
+
+- the question
+- the top 5 retrieved chunks
+- source filenames
+- page numbers
+- chunk IDs
+- similarity/distance scores
+- the final answer from the Ollama Cloud model
+- source references at the end
+
+## Expected output
+
+The output format is intentionally verbose so the user can inspect what the retriever sent to the LLM. It follows the pattern below:
+
+```text
+<question>
+
+[1]
+Source: attendance_policy_person1.pdf
+Page: 1
+Chunk ID: ATTENDANCE-1-000
+Score/Distance: 0.2412
+
+<chunk text>
+
+---
+
+[2]
+Source: ...
+Page: ...
+Chunk ID: ...
+Score/Distance: ...
+
+<chunk text>
+
+...
+
+<answer generated by the configured Ollama Cloud model>
+
+==============================
+
+Source:
+- attendance_policy_person1.pdf, page 1, chunk ATTENDANCE-1-000
+```
+
+## Retrieved chunks display
+
+The retriever does not hide or rewrite the chunk content. The raw chunk text is shown before generation so you can inspect exactly what the LLM sees. This is useful for baseline experiments and later security work.
+
+## Baseline security note
+
+This is intentionally a baseline RAG pipeline. It does not sanitize, remove, rewrite, or analyze retrieved instructions before sending them to the LLM.
+
+A later DeBERTa-based malicious-chunk filter will be inserted between retrieval and generation. This project deliberately preserves the raw retrieved content for that future extension.
+
+## Smoke test
+
+A minimal verification script is included:
+
+```bash
+python smoke_test.py
+```
+
+It checks the following:
+
+1. PDFs can be loaded.
+2. Documents can be chunked.
+3. Hugging Face embeddings can be generated.
+4. Chroma can store and retrieve chunks.
+5. Ollama Cloud can answer using retrieved context.
+
+## Notes
+
+- The embedding model is hosted on Hugging Face, which keeps the embedding path external and lightweight.
+- The generation model is called through Ollama Cloud.
+- The prompt is intentionally simple and realistic for a baseline RAG pipeline.
+- No prompt-injection mitigation or security filtering is added yet.
