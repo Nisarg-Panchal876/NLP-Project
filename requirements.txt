@@ -6,3 +6,13 @@ langchain-ollama
 chromadb
 pypdf
 python-dotenv
+transformers
+datasets
+accelerate
+scikit-learn
+sentencepiece
+protobuf
+jsonlines
+huggingface_hub
+torch
+reportlab

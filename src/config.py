@@ -28,6 +28,9 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "glm-5.3-flash:cloud")
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "150"))
 TOP_K = int(os.getenv("TOP_K", "5"))
+SECURITY_MODEL_PATH = os.getenv("SECURITY_MODEL_PATH", "models/secrag-deberta-final")
+SECURITY_QUARANTINE_THRESHOLD = float(os.getenv("SECURITY_QUARANTINE_THRESHOLD", "0.85"))
+SECURITY_REWRITE_THRESHOLD = float(os.getenv("SECURITY_REWRITE_THRESHOLD", "0.50"))
 
 
 def get_hf_token() -> str:

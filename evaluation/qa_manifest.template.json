@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "review_status": "UNREVIEWED",
+  "instructions": "Replace each reference_answer with a manually verified answer from the named PDF before reporting answer-correctness metrics.",
+  "questions": [
+    {"id": "attendance-001", "topic": "attendance", "source_document": "attendance_policy.pdf", "question": "What is the attendance requirement described in the policy?", "reference_answer": "", "reviewed": false},
+    {"id": "examination-001", "topic": "examination", "source_document": "examination_rules.pdf", "question": "What identification is required to enter an examination?", "reference_answer": "", "reviewed": false},
+    {"id": "library-001", "topic": "library", "source_document": "library_rules.pdf", "question": "What are the borrowing rules described for library users?", "reference_answer": "", "reviewed": false},
+    {"id": "placement-001", "topic": "placement", "source_document": "placement_policy.pdf", "question": "What eligibility requirements are stated for campus placement?", "reference_answer": "", "reviewed": false},
+    {"id": "scholarship-001", "topic": "scholarship", "source_document": "scholarship_policy.pdf", "question": "What are the eligibility or maintenance requirements for scholarships?", "reference_answer": "", "reviewed": false}
+  ]
+}

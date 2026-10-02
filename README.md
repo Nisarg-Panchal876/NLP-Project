@@ -45,12 +45,15 @@ project/
 │   ├── retriever.py
 │   ├── llm.py
 │   ├── prompts.py
-│   └── rag.py
-├── ingest.py
+│   ├── rag.py
+│   ├── anomaly.py
+│   └── security_filter.py
 ├── query.py
 ├── smoke_test.py
+├── test_security_filter.py
+├── train_filter.py
+├── evaluation/
 ├── requirements.txt
-├── .env
 ├── .env.example
 ├── README.md
 └── ...
@@ -201,6 +204,44 @@ The retriever does not hide or rewrite the chunk content. The raw chunk text is 
 This is intentionally a baseline RAG pipeline. It does not sanitize, remove, rewrite, or analyze retrieved instructions before sending them to the LLM.
 
 A later DeBERTa-based malicious-chunk filter will be inserted between retrieval and generation. This project deliberately preserves the raw retrieved content for that future extension.
+
+## Phase 2 security filter
+
+The project now supports two modes over the same vector store:
+
+```bash
+python query.py --mode baseline
+python query.py --mode filtered
+```
+
+`baseline` preserves the original raw-context behavior. `filtered` scores each retrieved chunk with the local DeBERTa model and runs anomaly checks for entropy, base64-like payloads, zero-width characters, unusual character ratios, and directive patterns before building the LLM prompt. Quarantined chunks are removed from the prompt, while all security decisions remain in the returned result for auditing.
+
+Configure the local model and thresholds in `.env`:
+
+```env
+SECURITY_MODEL_PATH=models/secrag-deberta-final
+SECURITY_QUARANTINE_THRESHOLD=0.85
+SECURITY_REWRITE_THRESHOLD=0.50
+```
+
+### Train the filter
+
+Clone BIPIA and train from the project root:
+
+```bash
+git clone --depth 1 https://github.com/microsoft/BIPIA.git
+python train_filter.py
+```
+
+The training script combines deepset direct-injection data, BIPIA indirect-injection data, and positive examples from `poisoned_chunks.csv`. The CSV is training augmentation only; it is not used as an unbiased test set. The exported model is written to `models/secrag-deberta-final/`.
+
+The initial policy is:
+
+- injection probability above `0.85`, or any high anomaly result: quarantine
+- probability from `0.50` through `0.85` with no high anomaly: conservative rewrite
+- probability below `0.50` with no high anomaly: pass
+
+For paper results, evaluate on untouched direct and indirect test data and report those distributions separately. Do not claim detection performance from rows used to train the model.
 
 ## Smoke test
 

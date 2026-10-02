@@ -25,6 +25,13 @@ htmlcov/
 
 # Generated vector database
 data/chroma/
+models/
+*.zip
+BIPIA/
+training-checkpoints/
+
+# Evaluation outputs may contain provider responses
+evaluation/artifacts/
 
 # Local duplicate PDFs kept outside the application data directory
 /*.pdf
